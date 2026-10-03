@@ -1,0 +1,10 @@
+{
+  "name": "Loja de Móveis - Brecho da Elza",
+  "short_name": "Brecho",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f3f4f6",
+  "theme_color": "#1e3a8a",
+  "lang": "pt-BR",
+  "icons": []
+}

@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1e3a8a"><link rel="manifest" href="manifest.json">
+<title>Loja de Móveis - Vó Tuti</title>
+
+<!-- Bibliotecas para gerar PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f4f6;color:#111827; padding-bottom: 70px;}
+header{background:#1e3a8a;color:white;padding:22px 18px;position:sticky;top:0;z-index:10; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
+h1{font-size:21px;margin:0}header p{margin:5px 0 0;color:#bfdbfe;font-size:13px}
+main{max-width:900px;margin:auto;padding:14px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.card{background:white;border-radius:14px;padding:16px;box-shadow:0 2px 8px #00000010; margin-bottom: 14px;}
+.metric{font-size:24px;font-weight:700;margin-top:7px}
+button{border:0;border-radius:12px;padding:13px 14px;font-weight:700;cursor:pointer; transition: 0.2s;}
+button:active{transform: scale(0.98);}
+.primary{background:#1e3a8a;color:white}.secondary{background:#e5e7eb;color:#111827}
+.success{background:#10b981;color:white}.danger{background:#ef4444;color:white}
+.actions{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0}
+label{display:block;font-size:13px;font-weight:700;margin:10px 0 5px}
+input,select{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:10px;font-size:16px; background: #fff;}
+.hidden{display:none !important}.row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.list{margin-top:10px}.item{padding:12px 0;border-bottom:1px solid #e5e7eb; display:flex; gap: 12px; align-items: center;}
+.small{font-size:12px;color:#6b7280}
+.badge{padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: bold; color: white;}
+.badge-green{background: #10b981;} .badge-red{background: #ef4444;} .badge-blue{background: #3b82f6;} .badge-gray{background: #6b7280;}
+.img-thumb{width: 60px; height: 60px; object-fit: cover; border-radius: 8px; background: #e5e7eb;}
+
+/* Navegação inferior (Tabs) */
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 12px 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 10; border-top: 1px solid #e5e7eb;}
+.nav-item { background: transparent; color: #6b7280; flex: 1; text-align: center; font-size: 12px; padding: 5px; border-radius: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: bold;}
+.nav-item.active { color: #1e3a8a; }
+.nav-icon { font-size: 20px; }
+
+/* Cores do painel gerencial */
+.card-green { background: #ecfdf5; border: 1px solid #10b981; }
+.card-red { background: #fef2f2; border: 1px solid #ef4444; }
+.card-blue { background: #eff6ff; border: 1px solid #3b82f6; }
+.card-yellow { background: #fffbeb; border: 1px solid #f59e0b; }
+@media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}.actions{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Móveis do Brecho Da Elza</h1>
+    <p>Controle de Estoque e Caixa</p>
+  </div>
+  <button id="btnSair" class="secondary hidden" style="padding: 8px 12px; font-size: 12px;" onclick="sair()">Sair</button>
+</header>
+
+<main>
+  <!-- TELA DE LOGIN -->
+  <section id="loginScreen" class="card">
+    <h2 style="margin-top: 0;">Login no Sistema</h2>
+    <label>E-mail</label>
+    <input type="email" id="emailInput" placeholder="vovotuti@loja.com" required>
+    <label>Senha</label>
+    <input type="password" id="senhaInput" placeholder="Sua senha" required>
+    <br><br>
+    <button class="primary" style="width:100%" onclick="entrar()">Entrar</button>
+    <p id="loginErro" style="color:red; font-size:13px; display:none; margin-top: 10px; text-align: center; font-weight: bold;"></p>
+  </section>
+
+  <!-- CONTEÚDO PRINCIPAL (Exibido após login) -->
+  <div id="mainContent" class="hidden">
+    
+    <!-- ABA 1: FINANCEIRO -->
+    <section id="tab-financeiro" class="tab-content">
+      <div class="grid">
+        <div class="card card-green">Entradas (Pagos)<div class="metric" id="mEntradas" style="color:#047857">R$ 0,00</div></div>
+        <div class="card card-red">Valores Pagos (Saídas)<div class="metric" id="mSaidas" style="color:#b91c1c">R$ 0,00</div></div>
+        <div class="card card-blue">Saldo Atual<div class="metric" id="mSaldo" style="color:#1d4ed8">R$ 0,00</div></div>
+        <div class="card card-yellow">Fiado (Em Atraso)<div class="metric" id="mAtraso" style="color:#b45309">R$ 0,00</div></div>
+      </div>
+      
+      <div class="actions">
+        <button class="primary" onclick="abrirForm('venda')">📝 Nova Venda / Ficha</button>
+        <button class="danger" onclick="abrirForm('despesa')">💸 Lançar Saída</button>
+      </div>
+
+      <div class="card">
+        <div class="row" style="margin-bottom: 10px;">
+          <b>Últimas Movimentações</b>
+          <button class="primary" style="padding: 8px 12px; font-size: 12px;" onclick="gerarPDF()">📄 Relatório PDF</button>
+        </div>
+        <div id="list-caixa" class="list"></div>
+      </div>
+    </section>
+
+    <!-- ABA 2: ESTOQUE -->
+    <section id="tab-estoque" class="tab-content hidden">
+      <div class="card">
+        <div class="row" style="margin-bottom: 15px;">
+          <h2 style="margin: 0; font-size: 18px;">Controle de Estoque</h2>
+          <button class="primary" style="padding: 8px 12px; font-size: 12px;" onclick="abrirForm('estoque')">➕ Adicionar Móvel</button>
+        </div>
+        <div id="list-estoque" class="list"></div>
+      </div>
+    </section>
+
+    <!-- ABA 3: CLIENTES / FICHAS -->
+    <section id="tab-clientes" class="tab-content hidden">
+      <div class="card">
+        <h2 style="margin: 0 0 15px 0; font-size: 18px;">Fichas de Clientes</h2>
+        <div id="list-clientes" class="list"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- FORMULÁRIOS ÚNICOS (Modal) -->
+  <section id="formArea" class="card hidden" style="position: absolute; top: 80px; left: 14px; right: 14px; z-index: 20;">
+    <div class="row"><h2 id="formTitle"></h2><button class="secondary" onclick="fecharForm()">Cancelar</button></div>
+    <form id="entryForm" onsubmit="salvarDados(event)">
+      <input type="hidden" id="formType">
+      
+      <!-- Campos Dinâmicos injetados via JS -->
+      <div id="dynamicFields"></div>
+      
+      <br><button class="primary" style="width:100%" id="btnSalvar">Salvar Registro</button>
+    </form>
+  </section>
+
+  <!-- MENU INFERIOR DE NAVEGAÇÃO -->
+  <nav class="bottom-nav hidden" id="bottomNav">
+    <button class="nav-item active" onclick="mudarAba('financeiro', this)">
+      <span class="nav-icon">💰</span><span>Financeiro</span>
+    </button>
+    <button class="nav-item" onclick="mudarAba('estoque', this)">
+      <span class="nav-icon">📦</span><span>Estoque</span>
+    </button>
+    <button class="nav-item" onclick="mudarAba('clientes', this)">
+      <span class="nav-icon">👥</span><span>Clientes</span>
+    </button>
+  </nav>
+
+</main>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+ //CHAVE
+ const firebaseConfig = {
+  apiKey: "AIzaSyBIk2gUSyT-I02nNpALnI3L7VpbYkvdcs4",
+  authDomain: "brechodaelza-5ff84.firebaseapp.com",
+  projectId: "brechodaelza-5ff84",
+  storageBucket: "brechodaelza-5ff84.firebasestorage.app",
+  messagingSenderId: "459012061681",
+  appId: "1:459012061681:web:6e94a2e7c6802784d1ac50",
+  measurementId: "G-4L4LTBERX2"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app); 
+  const registrosRef = collection(db, "registros_loja");
+
+  let dataDb = []; // Guarda todos os dados do banco
+  let unsubscribeSnapshot = null; 
+  const money = v => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+
+  // --- SISTEMA DE COMPRESSÃO DE IMAGENS ---
+  window.processarImagem = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        // Reduz o tamanho da imagem para caber fácil no banco de dados
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 400;
+        const scaleSize = MAX_WIDTH / img.width;
+        canvas.width = MAX_WIDTH;
+        canvas.height = img.height * scaleSize;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        // Salva a imagem convertida em texto escondida no form
+        document.getElementById('fotoBase64').value = canvas.toDataURL('image/jpeg', 0.6);
+      }
+      img.src = e.target.result;
+    }
+    reader.readAsDataURL(file);
+  }
+
+  // --- LOGIN ---
+  window.entrar = async function() {
+    const email = document.getElementById('emailInput').value;
+    const senha = document.getElementById('senhaInput').value;
+    const erroMsg = document.getElementById('loginErro');
+    const btnLogin = document.querySelector('#loginScreen button');
+    
+    btnLogin.textContent = "Autenticando...";
+    btnLogin.disabled = true;
+    
+    try {
+      await signInWithEmailAndPassword(auth, email, senha);
+      erroMsg.style.display = 'none';
+      btnLogin.textContent = "Entrar";
+      btnLogin.disabled = false;
+    } catch(error) {
+      erroMsg.textContent = "Erro: E-mail ou senha incorretos.";
+      erroMsg.style.display = 'block';
+      btnLogin.textContent = "Entrar";
+      btnLogin.disabled = false;
+    }
+  }
+
+  window.sair = function() { signOut(auth); }
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('mainContent').classList.remove('hidden');
+      document.getElementById('bottomNav').classList.remove('hidden');
+      document.getElementById('btnSair').classList.remove('hidden');
+      
+      const queryOrdenada = query(registrosRef, orderBy("timestamp", "desc")); 
+      unsubscribeSnapshot = onSnapshot(queryOrdenada, (snapshot) => {
+        dataDb = [];
+        snapshot.forEach((doc) => {
+          // Salva o ID do documento junto com os dados para podermos editar depois
+          dataDb.push({ id: doc.id, ...doc.data() }); 
+        });
+        renderizarTelas(); 
+      });
+    } else {
+      document.getElementById('loginScreen').classList.remove('hidden');
+      document.getElementById('mainContent').classList.add('hidden');
+      document.getElementById('bottomNav').classList.add('hidden');
+      document.getElementById('formArea').classList.add('hidden');
+      document.getElementById('btnSair').classList.add('hidden');
+      if(unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+    }
+  });
+
+  // --- NAVEGAÇÃO DE ABAS ---
+  window.mudarAba = function(abaId, btnElement) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+    document.getElementById(`tab-${abaId}`).classList.remove('hidden');
+    
+    document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+    btnElement.classList.add('active');
+  }
+
+  // --- FORMULÁRIOS DINÂMICOS ---
+  window.abrirForm = function(tipo) {
+    document.getElementById('formArea').classList.remove('hidden');
+    document.getElementById('formType').value = tipo;
+    const div = document.getElementById('dynamicFields');
+    
+    if (tipo === 'venda') {
+      document.getElementById('formTitle').textContent = 'Ficha de Cliente / Venda';
+      div.innerHTML = `
+        <label>Data</label><input type="date" id="fData" value="${new Date().toISOString().slice(0, 10)}" required>
+        <label>Nome do Cliente</label><input id="fCliente" placeholder="Ex: Maria Silva" required>
+        <label>Telefone do Cliente</label><input id="fTelefone" placeholder="(00) 00000-0000">
+        <label>Móveis Vendidos</label><input id="fMovel" placeholder="Roupeiro 6 portas, Cama box..." required>
+        <label>Valor Total (R$)</label><input type="number" step="0.01" id="fValor" required>
+        <label>Forma de Pagamento</label>
+        <select id="fMetodo">
+          <option value="Dinheiro">Dinheiro</option><option value="Pix">Pix</option>
+          <option value="Cartão">Cartão</option><option value="Cheque">Cheque</option>
+        </select>
+        <label>Status do Pagamento</label>
+        <select id="fStatus">
+          <option value="Pago">Certo / Pago</option>
+          <option value="Em Atraso">Ficha / Em Atraso</option>
+        </select>
+      `;
+    } 
+    else if (tipo === 'despesa') {
+      document.getElementById('formTitle').textContent = 'Valores Pagos / Saídas';
+      div.innerHTML = `
+        <label>Data</label><input type="date" id="fData" value="${new Date().toISOString().slice(0, 10)}" required>
+        <label>Descrição do Pagamento</label><input id="fDesc" placeholder="Compra de móvel usado, conta de luz..." required>
+        <label>Valor Pago (R$)</label><input type="number" step="0.01" id="fValor" required>
+      `;
+    }
+    else if (tipo === 'estoque') {
+      document.getElementById('formTitle').textContent = 'Adicionar ao Estoque';
+      div.innerHTML = `
+        <label>Nome do Móvel</label><input id="fMovel" placeholder="Ex: Sofá Retrátil 3 Lugares" required>
+        <div class="row">
+          <div style="width:50%">
+            <label>Condição</label>
+            <select id="fCondicao"><option value="Novo">Novo</option><option value="Usado">Usado</option></select>
+          </div>
+          <div style="width:50%">
+            <label>Estado</label>
+            <select id="fEstado"><option value="Montado">Montado na loja</option><option value="Na Caixa">Desmontado / Na Caixa</option></select>
+          </div>
+        </div>
+        <label>Quantidade</label><input type="number" id="fQtde" value="1" required>
+        <label>Foto do Móvel (Opcional)</label>
+        <input type="file" id="fFoto" accept="image/*" onchange="processarImagem(event)">
+        <input type="hidden" id="fotoBase64">
+      `;
+    }
+  }
+
+  window.fecharForm = function() {
+    document.getElementById('formArea').classList.add('hidden');
+    document.getElementById('entryForm').reset();
+  }
+
+  // --- SALVAR DADOS ---
+  window.salvarDados = async function(e) {
+    e.preventDefault(); 
+    const btn = document.getElementById('btnSalvar');
+    btn.textContent = 'Salvando...';
+    btn.disabled = true;
+
+    const tipo = document.getElementById('formType').value;
+    let obj = { tipo: tipo, timestamp: new Date().getTime() };
+
+    if(tipo === 'venda') {
+      obj.data = document.getElementById('fData').value;
+      obj.cliente = document.getElementById('fCliente').value;
+      obj.telefone = document.getElementById('fTelefone').value;
+      obj.movel = document.getElementById('fMovel').value;
+      obj.valor = +(document.getElementById('fValor').value || 0);
+      obj.metodo = document.getElementById('fMetodo').value;
+      obj.status = document.getElementById('fStatus').value;
+    } else if (tipo === 'despesa') {
+      obj.data = document.getElementById('fData').value;
+      obj.desc = document.getElementById('fDesc').value;
+      obj.valor = +(document.getElementById('fValor').value || 0);
+    } else if (tipo === 'estoque') {
+      obj.movel = document.getElementById('fMovel').value;
+      obj.condicao = document.getElementById('fCondicao').value;
+      obj.estado = document.getElementById('fEstado').value;
+      obj.qtde = +(document.getElementById('fQtde').value || 1);
+      obj.foto = document.getElementById('fotoBase64').value || ''; // Imagem em texto
+    }
+
+    try {
+      await addDoc(registrosRef, obj);
+      fecharForm();
+    } catch(error) {
+      alert("Erro ao salvar dados. Verifique a internet.");
+    } finally {
+      btn.textContent = 'Salvar Registro';
+      btn.disabled = false;
+    }
+  }
+
+  // --- ATUALIZAR STATUS DE PAGAMENTO (FICHAS) ---
+  window.marcarComoPago = async function(docId) {
+    if(confirm('Confirmar o pagamento desta ficha? O valor entrará no saldo do caixa.')) {
+      try {
+        const docRef = doc(db, "registros_loja", docId);
+        await updateDoc(docRef, { status: "Pago" });
+      } catch (error) {
+        alert("Erro ao atualizar o status.");
+      }
+    }
+  }
+
+  // --- RENDERIZAR INTERFACE ---
+  function renderizarTelas() {
+    let entradasPagos = 0, saidas = 0, atraso = 0;
+    
+    // Arrays para separar as listas
+    let listaCaixaHTML = '';
+    let listaEstoqueHTML = '';
+    let listaClientesHTML = '';
+
+    dataDb.forEach(x => {
+      // Formatação de data padronizada
+      const dtForm = x.data ? x.data.split('-').reverse().join('/') : '';
+
+      // ---- CÁLCULOS E LISTA: FINANCEIRO E CLIENTES ----
+      if (x.tipo === 'venda') {
+        if (x.status === 'Pago') {
+          entradasPagos += x.valor;
+        } else {
+          atraso += x.valor;
+        }
+
+        // Adiciona na lista do caixa
+        const badgeStatus = x.status === 'Pago' ? `<span class="badge badge-green">Pago</span>` : `<span class="badge badge-red">Atraso</span>`;
+        listaCaixaHTML += `
+          <div class="item" style="flex-direction:column; align-items:flex-start; gap:4px;">
+            <div class="row" style="width:100%;">
+              <b>🟢 Venda - ${dtForm}</b> <span>${badgeStatus}</span>
+            </div>
+            <span class="small">${x.cliente} - ${x.movel} (${x.metodo})</span>
+            <b style="color:#047857;">+ ${money(x.valor)}</b>
+          </div>`;
+
+        // Adiciona na lista de Fichas (Clientes)
+        const btnPagar = x.status === 'Em Atraso' ? `<button class="success" style="padding:6px 10px; font-size:11px;" onclick="marcarComoPago('${x.id}')">✔ Baixar</button>` : '';
+        listaClientesHTML += `
+          <div class="item" style="justify-content:space-between;">
+            <div>
+              <b>${x.cliente}</b> ${badgeStatus}<br>
+              <span class="small">📞 ${x.telefone || 'S/N'} | 🪑 ${x.movel}</span><br>
+              <b>${money(x.valor)}</b>
+            </div>
+            <div>${btnPagar}</div>
+          </div>`;
+      } 
+      else if (x.tipo === 'despesa') {
+        saidas += x.valor;
+        listaCaixaHTML += `
+          <div class="item" style="flex-direction:column; align-items:flex-start; gap:4px;">
+            <div class="row" style="width:100%;"><b>🔴 Saída - ${dtForm}</b></div>
+            <span class="small">${x.desc}</span>
+            <b style="color:#b91c1c;">- ${money(x.valor)}</b>
+          </div>`;
+      }
+      
+      // ---- LISTA: ESTOQUE ----
+      else if (x.tipo === 'estoque') {
+        const condBadge = x.condicao === 'Novo' ? `<span class="badge badge-blue">Novo</span>` : `<span class="badge badge-yellow" style="background:#f59e0b;">Usado</span>`;
+        const estBadge = x.estado === 'Montado' ? `<span class="badge badge-green">Montado</span>` : `<span class="badge badge-gray">Na Caixa</span>`;
+        const imgTag = x.foto ? `<img src="${x.foto}" class="img-thumb">` : `<div class="img-thumb" style="display:flex; align-items:center; justify-content:center; font-size:10px; color:#9ca3af;">Sem foto</div>`;
+
+        listaEstoqueHTML += `
+          <div class="item">
+            ${imgTag}
+            <div style="flex:1;">
+              <b>${x.movel}</b><br>
+              <div style="margin-top:4px;">${condBadge} ${estBadge}</div>
+            </div>
+            <div style="text-align:right;">
+              <span class="small">Qtd.</span><br>
+              <b style="font-size:18px;">${x.qtde}</b>
+            </div>
+          </div>`;
+      }
+    });
+
+    // Atualiza Painel Financeiro
+    const saldoLiquido = entradasPagos - saidas;
+    document.getElementById('mEntradas').textContent = money(entradasPagos);
+    document.getElementById('mSaidas').textContent = money(saidas);
+    document.getElementById('mSaldo').textContent = money(saldoLiquido);
+    document.getElementById('mSaldo').style.color = saldoLiquido >= 0 ? '#1d4ed8' : '#b91c1c';
+    document.getElementById('mAtraso').textContent = money(atraso);
+
+    // Atualiza as Listas HTML
+    document.getElementById('list-caixa').innerHTML = listaCaixaHTML || '<div class="small">Nenhuma movimentação.</div>';
+    document.getElementById('list-estoque').innerHTML = listaEstoqueHTML || '<div class="small">Estoque vazio.</div>';
+    document.getElementById('list-clientes').innerHTML = listaClientesHTML || '<div class="small">Nenhuma ficha registrada.</div>';
+  }
+
+  // --- GERADOR DE RELATÓRIO PDF ---
+  window.gerarPDF = function() {
+    if (dataDb.length === 0) { alert("Não há dados."); return; }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const dataAtual = new Date().toLocaleDateString('pt-BR');
+
+    // Cabeçalho
+    doc.setFontSize(16);
+    doc.text("Relatorio Gerencial - Moveis da Vo Tuti", 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${dataAtual}`, 14, 26);
+
+    // PÁGINA 1: FINANCEIRO E CLIENTES DEVENDO
+    let fat = 0, saidas = 0, atraso = 0;
+    let devendo = [];
+    
+    dataDb.forEach(x => {
+      if(x.tipo === 'venda') {
+        if(x.status === 'Pago') fat += x.valor;
+        else {
+          atraso += x.valor;
+          const dt = x.data.split('-').reverse().join('/');
+          devendo.push([dt, x.cliente, x.telefone || '-', x.movel, money(x.valor)]);
+        }
+      }
+      if(x.tipo === 'despesa') saidas += x.valor;
+    });
+
+    doc.setFontSize(11);
+    doc.text(`Total em Caixa (Recebido): ${money(fat)}`, 14, 38);
+    doc.text(`Total de Saidas (Gastos): ${money(saidas)}`, 14, 44);
+    doc.text(`Saldo Atual do Caixa: ${money(fat - saidas)}`, 14, 50);
+    doc.text(`Total na Rua (Fichas em Atraso): ${money(atraso)}`, 14, 56);
+
+    doc.setFontSize(13);
+    doc.text("Fichas de Clientes em Atraso", 14, 70);
+    
+    if(devendo.length > 0) {
+      doc.autoTable({
+        startY: 75,
+        head: [['Data', 'Cliente', 'Telefone', 'Móvel', 'Valor devido']],
+        body: devendo,
+        theme: 'grid',
+        headStyles: { fillColor: [220, 38, 38] }, // Cabeçalho vermelho para devedores
+        styles: { fontSize: 9 }
+      });
+    } else {
+      doc.setFontSize(10);
+      doc.text("Nenhum cliente devendo no momento! :)", 14, 78);
+    }
+
+    // PÁGINA 2: ESTOQUE
+    doc.addPage();
+    doc.setFontSize(16);
+    doc.text("Controle de Estoque", 14, 20);
+    
+    let estoqueLinhas = [];
+    dataDb.forEach(x => {
+      if(x.tipo === 'estoque') {
+        estoqueLinhas.push([x.movel, x.condicao, x.estado, x.qtde]);
+      }
+    });
+
+    if(estoqueLinhas.length > 0) {
+      doc.autoTable({
+        startY: 25,
+        head: [['Produto', 'Condição', 'Estado (Montagem)', 'Qtd']],
+        body: estoqueLinhas,
+        theme: 'grid',
+        headStyles: { fillColor: [30, 58, 138] }, // Azul igual cabeçalho
+        styles: { fontSize: 9 }
+      });
+    } else {
+       doc.setFontSize(10);
+       doc.text("Estoque vazio.", 14, 30);
+    }
+
+    doc.save(`Relatorio_Vo_Tuti_${dataAtual.replace(/\//g, '-')}.pdf`);
+  }
+</script>
+
+</body>
+</html>
